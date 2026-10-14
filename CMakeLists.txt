@@ -47,6 +47,11 @@ if(LITRATECH_BUILD_MODULE)
   # Declared before the SDK so this pin wins. xtensor 0.25 does not compile
   # with the Clang version on Viam's macOS cloud builders.
   FetchContent_Declare(
+    xtl
+    GIT_REPOSITORY https://github.com/xtensor-stack/xtl.git
+    GIT_TAG 0.8.0
+  )
+  FetchContent_Declare(
     xtensor
     GIT_REPOSITORY https://github.com/xtensor-stack/xtensor.git
     GIT_TAG 0.26.0
