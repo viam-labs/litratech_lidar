@@ -1,6 +1,7 @@
 #include "scan_points.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -42,20 +43,21 @@ int main() {
         return fail("expected 3 returns, with the zero range omitted");
     }
     // beam indexes -2, -1, and +1 → angles -pi, -pi/2, +pi/2.
-    if (!near(points[0].x, -1.f) || !near(points[0].y, 0.f)) {
-        return fail("beam behind the sensor was not placed on -x");
+    // Viam frame: behind is -y, right is +x, left is -x.
+    if (!near(points[0].x, 0.f) || !near(points[0].y, -1.f)) {
+        return fail("beam behind the sensor was not placed on -y");
     }
-    if (!near(points[1].x, 0.f) || !near(points[1].y, -1.f)) {
-        return fail("beam to the right was not placed on -y");
+    if (!near(points[1].x, 1.f) || !near(points[1].y, 0.f)) {
+        return fail("beam to the right was not placed on +x");
     }
-    if (!near(points[2].x, 0.f) || !near(points[2].y, 1.f)) {
-        return fail("beam to the left was not placed on +y");
+    if (!near(points[2].x, -1.f) || !near(points[2].y, 0.f)) {
+        return fail("beam to the left was not placed on -x");
     }
 
     const std::vector<litratech::Point> mirrored =
         litratech::points_from_blocks(blocks, 0.05, 30.0, true);
-    if (!near(mirrored[1].y, 1.f) || !near(mirrored[2].y, -1.f)) {
-        return fail("invert_frame did not mirror y");
+    if (!near(mirrored[1].x, -1.f) || !near(mirrored[2].x, 1.f)) {
+        return fail("invert_frame did not mirror x");
     }
 
     const std::vector<litratech::Point> clipped =
@@ -83,6 +85,56 @@ int main() {
                              .size() +
                            3 * 12) {
         return fail("PCD payload size did not match three xyz points");
+    }
+
+    const std::vector<litratech::Point> ahead = {litratech::Point{0.f, 1.f, 0.f}};
+    const std::vector<unsigned char> png = litratech::render_preview_png(ahead, 2.0);
+    const unsigned char signature[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+    if (png.size() < sizeof(signature) ||
+        !std::equal(signature, signature + sizeof(signature), png.begin())) {
+        return fail("preview is not a PNG");
+    }
+    auto be32 = [&](size_t at) {
+        return (uint32_t(png[at]) << 24) | (uint32_t(png[at + 1]) << 16) | (uint32_t(png[at + 2]) << 8) |
+               uint32_t(png[at + 3]);
+    };
+    std::vector<unsigned char> raw;
+    for (size_t offset = 8; offset + 12 <= png.size();) {
+        const uint32_t length = be32(offset);
+        const std::string type(png.begin() + static_cast<std::ptrdiff_t>(offset + 4),
+                               png.begin() + static_cast<std::ptrdiff_t>(offset + 8));
+        const size_t data = offset + 8;
+        if (data + length + 4 > png.size()) {
+            return fail("truncated PNG chunk");
+        }
+        if (type == "IDAT") {
+            size_t i = data + 2;
+            const size_t end = data + length;
+            while (i + 5 <= end) {
+                const unsigned char header = png[i++];
+                const uint16_t block = static_cast<uint16_t>(png[i] | (png[i + 1] << 8));
+                i += 4;
+                if (i + block > end) {
+                    return fail("truncated deflate block");
+                }
+                raw.insert(raw.end(), png.begin() + static_cast<std::ptrdiff_t>(i),
+                           png.begin() + static_cast<std::ptrdiff_t>(i + block));
+                i += block;
+                if ((header & 0x01u) != 0) {
+                    break;
+                }
+            }
+        }
+        offset = data + length + 4;
+    }
+    // 480px image, 24px margin, 2 m full scale: 1 m forward is 108px above center.
+    const int size = 480;
+    const int px = size / 2;
+    const int py = size / 2 - static_cast<int>(std::lround((size / 2.0 - 24.0) / 2.0));
+    const size_t pixel = static_cast<size_t>(py) * (1 + static_cast<size_t>(size) * 3) + 1 +
+                         static_cast<size_t>(px) * 3;
+    if (pixel + 2 >= raw.size() || raw[pixel + 2] != 210) {
+        return fail("forward return was not drawn above the sensor");
     }
 
     return EXIT_SUCCESS;

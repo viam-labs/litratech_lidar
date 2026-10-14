@@ -2,7 +2,7 @@
 
 Viam camera module for LitraTech 2D lidars that speak [LDCP](https://github.com/LitraTech/ldcp_sdk) (LTME-02A, LT-R1, LT-R2, LT-I1, LT-I2, and other devices on the same protocol).
 
-The lidar is a `camera` component. `GetPointCloud` returns one revolution as a binary PCD in the sensor frame: +x is forward, +y is left, and z is 0. Ranges use the same 2 mm counts and angle layout as LitraTech's [ltme_node](https://github.com/LitraTech/ltme_node) ROS driver. `GetImages` is not supported.
+The lidar is a `camera` component. `GetPointCloud` returns one revolution as a binary PCD in Viam's frame: +y is forward, +x is right, and z is 0. Beam angles follow LitraTech's [ltme_node](https://github.com/LitraTech/ltme_node) ROS driver, including the 2 mm range counts. `GetImages` returns a top-down PNG of that scan, with forward at the top of the image.
 
 ## Configure
 

@@ -4,6 +4,7 @@
 
 #include <arpa/inet.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cmath>
@@ -171,6 +172,7 @@ struct LitratechCamera::State {
 
     std::mutex cloud_mu;
     std::vector<unsigned char> pcd;
+    std::vector<unsigned char> png;
     size_t point_count = 0;
     bool has_cloud = false;
 
@@ -335,6 +337,7 @@ void LitratechCamera::run() {
                         state_->config.invert_frame);
                     std::lock_guard<std::mutex> lock(state_->cloud_mu);
                     state_->pcd = encode_pcd(points);
+                    state_->png = render_preview_png(points, state_->config.range_max_m);
                     state_->point_count = points.size();
                     state_->has_cloud = true;
                     continue;
@@ -387,10 +390,21 @@ viam::sdk::ProtoStruct LitratechCamera::get_status() {
     return status_struct();
 }
 
-LitratechCamera::image_collection LitratechCamera::get_images(std::vector<std::string>,
-                                                             const viam::sdk::ProtoStruct&) {
-    throw viam::sdk::Exception(viam::sdk::ErrorCondition::k_not_supported,
-                               "LitraTech lidar does not produce images; use GetPointCloud");
+LitratechCamera::image_collection LitratechCamera::get_images(
+    std::vector<std::string> filter_source_names, const viam::sdk::ProtoStruct&) {
+    image_collection collection;
+    collection.metadata.captured_at = std::chrono::system_clock::now();
+    if (!filter_source_names.empty() &&
+        std::find(filter_source_names.begin(), filter_source_names.end(), name()) ==
+            filter_source_names.end()) {
+        return collection;
+    }
+    std::lock_guard<std::mutex> lock(state_->cloud_mu);
+    if (!state_->has_cloud) {
+        throw viam::sdk::Exception("no scan received from the lidar yet");
+    }
+    collection.images.push_back(viam::sdk::Camera::raw_image{viam::sdk::kMimeTypePNG, state_->png, name()});
+    return collection;
 }
 
 LitratechCamera::point_cloud LitratechCamera::get_point_cloud(std::string,
@@ -409,7 +423,7 @@ std::vector<viam::sdk::GeometryConfig> LitratechCamera::get_geometries(const via
 LitratechCamera::properties LitratechCamera::get_properties() {
     properties props;
     props.supports_pcd = true;
-    props.mime_types = {viam::sdk::kMimeTypePCD};
+    props.mime_types = {viam::sdk::kMimeTypePNG, viam::sdk::kMimeTypePCD};
     std::lock_guard<std::mutex> lock(state_->info_mu);
     props.frame_rate = state_->scan_hz;
     return props;

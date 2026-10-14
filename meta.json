@@ -3,7 +3,7 @@
   "module_id": "viam-labs:litratech-lidar",
   "visibility": "public",
   "url": "https://github.com/viam-labs/litratech_lidar",
-  "description": "Camera component for LitraTech LDCP 2D lidars",
+  "description": "LitraTech LDCP lidar as a Viam camera. Returns a 2D point cloud and a top-down preview image.",
   "models": [
     {
       "api": "rdk:component:camera",
