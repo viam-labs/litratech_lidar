@@ -18,7 +18,7 @@
     "build": "make module.tar.gz",
     "path": "module.tar.gz",
     "arch": ["linux/amd64", "linux/arm64", "darwin/arm64"],
-    "distro": "bullseye",
+    "distro": "bookworm",
     "darwin_deps": ["cmake", "ninja", "pkg-config", "boost", "grpc", "protobuf", "abseil"]
   }
 }

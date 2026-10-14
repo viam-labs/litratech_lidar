@@ -44,6 +44,13 @@ target_link_libraries(scan_points_test PRIVATE scan_points)
 option(LITRATECH_BUILD_MODULE "Build the Viam camera module (requires the Viam C++ SDK)" ON)
 if(LITRATECH_BUILD_MODULE)
   include(FetchContent)
+  # Declared before the SDK so this pin wins. xtensor 0.25 does not compile
+  # with the Clang version on Viam's macOS cloud builders.
+  FetchContent_Declare(
+    xtensor
+    GIT_REPOSITORY https://github.com/xtensor-stack/xtensor.git
+    GIT_TAG 0.26.0
+  )
   FetchContent_Declare(
     viam-cpp-sdk
     GIT_REPOSITORY https://github.com/viamrobotics/viam-cpp-sdk.git
