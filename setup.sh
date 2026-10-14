@@ -17,6 +17,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+echo "builder: $(uname -m) nproc=$(nproc) $(free -h | awk '/Mem:/ {print "mem="$2}')"
 
 apt-get update
 apt-get install -y --no-install-recommends \
