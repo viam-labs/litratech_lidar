@@ -41,7 +41,7 @@ apt_candidate() {
 }
 
 cmake_ver="$(cmake --version 2>/dev/null | awk 'NR==1 { print $3 }' || true)"
-if [[ -z "${cmake_ver}" ]] || ! version_ge "${cmake_ver}" "3.25"; then
+if [[ -z "${cmake_ver}" ]] || ! version_ge "${cmake_ver}" "3.29"; then
   case "$(uname -m)" in
     x86_64) cmake_arch=x86_64 ;;
     aarch64) cmake_arch=aarch64 ;;
